@@ -13,6 +13,8 @@ from ..roi_heads import build_roi_heads
 from .build import META_ARCH_REGISTRY
 from .semantic_seg import build_sem_seg_head
 
+import pdb
+
 __all__ = ["PanopticFPN"]
 
 
@@ -72,6 +74,8 @@ class PanopticFPN(nn.Module):
                   See the return value of
                   :func:`combine_semantic_and_instance_outputs` for its format.
         """
+        pdb.set_trace()
+
         images = [x["image"].to(self.device) for x in batched_inputs]
         images = [(x - self.pixel_mean) / self.pixel_std for x in images]
         images = ImageList.from_tensors(images, self.backbone.size_divisibility)
