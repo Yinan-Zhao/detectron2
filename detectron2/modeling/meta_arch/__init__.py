@@ -4,6 +4,7 @@
 from .build import META_ARCH_REGISTRY, build_model  # isort:skip
 
 from .panoptic_fpn import PanopticFPN
+from .panoptic_fpn_1 import PanopticFPN as PanopticFPN_1
 
 # import all the meta_arch, so they will be registered
 from .rcnn import GeneralizedRCNN, ProposalNetwork
