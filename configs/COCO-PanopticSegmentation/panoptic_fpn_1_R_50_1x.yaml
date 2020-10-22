@@ -4,3 +4,6 @@ MODEL:
   WEIGHTS: "detectron2://ImageNetPretrained/MSRA/R-50.pkl"
   RESNETS:
     DEPTH: 50
+DATASETS:
+  TRAIN: ("coco_2017_train_panoptic",)
+  TEST: ("coco_2017_val_panoptic",)
