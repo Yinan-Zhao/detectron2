@@ -15,11 +15,11 @@ from .semantic_seg import build_sem_seg_head
 
 import pdb
 
-__all__ = ["PanopticFPN"]
+__all__ = ["PanopticFPN_1"]
 
 
 @META_ARCH_REGISTRY.register()
-class PanopticFPN(nn.Module):
+class PanopticFPN_1(nn.Module):
     """
     Implement the paper :paper:`PanopticFPN`.
     """
