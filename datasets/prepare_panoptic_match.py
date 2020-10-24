@@ -51,7 +51,7 @@ def separate_coco_semantic_from_panoptic(panoptic_json, panoptic_root, sem_seg_r
     assert len(stuff_ids) <= 254
     for i, stuff_id in enumerate(stuff_ids):
         id_map[stuff_id] = i + 1
-    for i, thing_id in enumerte(thing_ids):
+    for i, thing_id in enumerate(thing_ids):
         id_map[thing_id] = len(stuff_ids) + i + 1
     id_map[0] = 255
     pdb.set_trace()
