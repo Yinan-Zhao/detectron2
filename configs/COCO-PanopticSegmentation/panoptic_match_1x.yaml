@@ -1,9 +1,9 @@
 _BASE_: "Base-Panoptic-FPN.yaml"
 MODEL:
-  META_ARCHITECTURE: "PanopticFPN_1"
+  META_ARCHITECTURE: "PanopticMatch"
   WEIGHTS: "detectron2://ImageNetPretrained/MSRA/R-50.pkl"
   RESNETS:
     DEPTH: 50
 DATASETS:
-  TRAIN: ("coco_2017_train_panoptic",)
-  TEST: ("coco_2017_val_panoptic",)
+  TRAIN: ("coco_2017_train_panoptic_separated",)
+  TEST: ("coco_2017_val_panoptic_separated",)
