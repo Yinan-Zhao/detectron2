@@ -48,13 +48,12 @@ def separate_coco_semantic_from_panoptic(panoptic_json, panoptic_root, sem_seg_r
     stuff_ids = [k["id"] for k in categories if k["isthing"] == 0]
     thing_ids = [k["id"] for k in categories if k["isthing"] == 1]
     id_map = {}  # map from category id to id in the output semantic annotation
-    assert len(stuff_ids) <= 254
+    assert len(stuff_ids) + len(thing_ids) <= 254
     for i, stuff_id in enumerate(stuff_ids):
         id_map[stuff_id] = i + 1
     for i, thing_id in enumerate(thing_ids):
         id_map[thing_id] = len(stuff_ids) + i + 1
     id_map[0] = 255
-    pdb.set_trace()
 
     with open(panoptic_json) as f:
         obj = json.load(f)
