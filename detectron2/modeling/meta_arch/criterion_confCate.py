@@ -110,9 +110,8 @@ def focal_loss(input, target, valid_mask=None, sigmoid_clip=False, alpha: float 
     loss_stuff = loss_list.mean()
     return loss_stuff
 
-def conf_loss(input, target, neg_factor=10):
+def conf_loss(input, target, neg_factor=10, neg_idx=80):
     ce_loss = F.cross_entropy(input, target, reduction="none")
-    neg_idx = 8
     loss = ce_loss[target!=neg_idx].sum() + ce_loss[target==neg_idx].sum()/neg_factor
     loss = loss/ce_loss.shape[0]
     return loss
@@ -155,118 +154,4 @@ def MatchDice(score_inst_sig, target_inst, score_conf_softmax, gt_classes):
             iou_matrix += score_conf_softmax[0][:,gt_classes].permute(1,0).detach()
         row_ind, col_ind = linear_sum_assignment(-iou_matrix.cpu().numpy())
         return row_ind, col_ind
-
-
-class MatchDiceConfCate(nn.Module):
-    def __init__(self, ignore_label=-1, weight=None, background_channel=11, channel_shuffle=False, iou_use_smooth=True, sigmoid_clip=False, match_with_dice=False, no_focal_loss=False, focal_weight=1., factor_empty=5, conf_weight=5.):
-        super(MatchDiceConfCate, self).__init__()
-        self.ignore_label = ignore_label
-        self.sigmoid_layer = nn.Sigmoid()
-        self.softmax_layer = nn.Softmax(dim=2)
-        self.background_channel = background_channel
-        self.criterion_sem = CrossEntropy(ignore_label=ignore_label, weight=weight)
-        self.channel_shuffle = channel_shuffle
-        self.iou_use_smooth = iou_use_smooth
-        self.sigmoid_clip = sigmoid_clip
-        self.match_with_dice = match_with_dice
-        self.no_focal_loss = no_focal_loss
-        self.focal_weight = focal_weight
-        self.factor_empty = factor_empty
-        self.conf_weight = conf_weight
-
-    def forward(self, score, target):
-        target_inst, target_inst_sem_idx, target_sem, target_label, label_inst_num, label_background_num = target
-        score_inst, score_conf = score
-        ph, pw = score_inst.size(2), score_inst.size(3)
-        h, w = target_inst.size(2), target_inst.size(3)
-
-        if ph != h or pw != w:
-            score_inst = F.upsample(
-                    input=score_inst, size=(h, w), mode='bilinear')
-
-        score_inst_sig = self.sigmoid_layer(score_inst)
-        score_conf_sig = self.softmax_layer(score_conf)
-
-        num_inst = sum(label_inst_num)
-        num_inst = torch.as_tensor([num_inst], dtype=torch.float, device=score_inst.device)
-        torch.distributed.all_reduce(num_inst)
-        num_inst = torch.clamp(num_inst / get_world_size(), min=1).item()  
-
-        with torch.no_grad():     
-            score_inst_downsample = F.interpolate(input=score_inst_sig, size=(h//4, w//4), mode='bilinear') 
-            target_inst_downsample = F.interpolate(input=target_inst.float(), size=(h//4, w//4), mode='nearest') 
-            target_sem_downsample = F.interpolate(input=target_sem.float(), size=(h//4, w//4), mode='nearest') 
-
-        #### loss ####
-        loss_stuff_dice = 0.
-        loss_thing_dice = 0.
-        loss_stuff_focal = 0.
-        loss_conf = 0.
-        for b in range(score_inst_sig.shape[0]):
-            score_inst_b = score_inst_sig[b:b+1,self.background_channel:] # 1 x C1 x H x W
-            target_inst_b = target_inst[b:b+1,self.background_channel:self.background_channel+label_inst_num[b]] # 1 x C2 x H x W
-
-            score_inst_downsample_b = score_inst_downsample[b:b+1,self.background_channel:]
-            target_inst_downsample_b = target_inst_downsample[b:b+1,self.background_channel:self.background_channel+label_inst_num[b]]
-
-            if self.channel_shuffle:
-                rand_perm = np.random.permutation(score_inst_b.shape[1])
-                score_inst_b = score_inst_b[:,rand_perm]
-                score_inst_downsample_b = score_inst_downsample_b[:,rand_perm]
-
-            dim_flatten = target_inst_downsample_b.shape[1]*score_inst_downsample_b.shape[1]
-            with torch.no_grad():
-                output_x = torch.reshape(score_inst_downsample_b.expand(target_inst_downsample_b.shape[1],-1,-1,-1), 
-                    (dim_flatten,score_inst_downsample_b.shape[2], score_inst_downsample_b.shape[3]))
-                label_x = torch.reshape(target_inst_downsample_b.expand(score_inst_downsample_b.shape[1],-1,-1,-1).permute(1,0,2,3), (dim_flatten,target_inst_downsample_b.shape[2], target_inst_downsample_b.shape[3]))
-                if self.match_with_dice:
-                    iou_flatten = dice_match(output_x.detach(), label_x.detach(), sigmoid_clip=self.sigmoid_clip)
-                else:
-                    iou_flatten = iou_pytorch(output_x.detach() > 0.5, label_x.detach() > 0.5, 
-                        use_smooth=self.iou_use_smooth)
-                iou_matrix = iou_flatten.view(target_inst_downsample_b.shape[1], score_inst_downsample_b.shape[1])
-                if iou_matrix.shape[0]:
-                    iou_matrix += score_conf_sig[b][:,target_inst_sem_idx[b,:label_inst_num[b]].long()].permute(1,0).detach()
-                row_ind, col_ind = linear_sum_assignment(-iou_matrix.cpu().numpy())
-
-            col_ind_empty = np.setdiff1d(np.arange(score_inst_b.shape[1]), col_ind)
-
-            score_inst_sig_perm = torch.cat((score_inst_sig[b,:self.background_channel],
-                                            score_inst_b[0,col_ind,:,:]),0)
-
-            target_inst_perm = torch.cat((target_inst[b,:self.background_channel],
-                                            target_inst_b[0,row_ind,:,:]),0).float()
-
-            loss_stuff_dice_tmp, loss_thing_dice_tmp = dice_loss(score_inst_sig_perm,
-                                                                target_inst_perm,
-                                                                num_inst, 
-                                                                background_channels=self.background_channel, 
-                                                                valid_mask=None, 
-                                                                sigmoid_clip=self.sigmoid_clip)
-
-            target_conf = target_inst_sem_idx[b]
-            loss_conf_tmp = conf_loss(torch.cat((score_conf[b,col_ind], score_conf[b,col_ind_empty]), 0), 
-                                        target_conf.long(), 
-                                        neg_factor=self.factor_empty)
-
-            if self.no_focal_loss:
-                loss_stuff_focal_tmp = 0
-            else:
-                loss_stuff_focal_tmp = focal_loss(score_inst_sig[b,:self.background_channel],
-                                                target_inst[b,:self.background_channel].float(),
-                                                valid_mask=None, 
-                                                sigmoid_clip=self.sigmoid_clip)
-
-            loss_stuff_dice += loss_stuff_dice_tmp
-            loss_thing_dice += loss_thing_dice_tmp
-            loss_stuff_focal += loss_stuff_focal_tmp
-            loss_conf += loss_conf_tmp
-
-        loss_stuff_focal = loss_stuff_focal / score_inst_sig.shape[0]
-        loss_stuff_dice = loss_stuff_dice / score_inst_sig.shape[0]
-        loss_conf = loss_conf / score_inst_sig.shape[0]
-
-        loss = loss_stuff_focal*self.focal_weight + loss_stuff_dice + loss_thing_dice + loss_conf*self.conf_weight
-
-        return loss/4.
 

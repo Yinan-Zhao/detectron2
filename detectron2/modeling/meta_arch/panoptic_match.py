@@ -17,10 +17,11 @@ import numpy as np
 
 from detectron2.structures import ImageList
 from detectron2.structures.masks import polygons_to_bitmask
+from detectron2.utils.comm import get_world_size
 
 from ..postprocessing import detector_postprocess, sem_seg_postprocess
 from .build import META_ARCH_REGISTRY
-from .criterion_confCate import CrossEntropy, MatchDice
+from .criterion_confCate import CrossEntropy, MatchDice, dice_loss, conf_loss, focal_loss
 
 import pdb
 
@@ -123,9 +124,18 @@ class PanopticMatch(nn.Module):
         #pdb.set_trace()
 
         gt_sem_seg[gt_sem_seg>BACKGROUND_NUM] = 0
-        pdb.set_trace()
-        gt_stuff = F.one_hot(gt_sem_seg, num_classes=BACKGROUND_NUM+1)
-        
+        gt_stuff = F.one_hot(gt_sem_seg, num_classes=BACKGROUND_NUM+1).permute(0,3,1,2)
+        gt_stuff = gt_stuff[:,1:]
+
+        num_inst = sum([len(gt_instances[i]) for i in len(gt_instances)])
+        num_inst = torch.as_tensor([num_inst], dtype=torch.float, device=score_inst.device)
+        torch.distributed.all_reduce(num_inst)
+        num_inst = torch.clamp(num_inst / get_world_size(), min=1).item()  
+
+        loss_stuff_dice = 0.
+        loss_thing_dice = 0.
+        loss_stuff_focal = 0.
+        loss_conf = 0.
 
         for i in range(len(batched_inputs)):
             gt_inst = gt_instances[i]
@@ -135,29 +145,57 @@ class PanopticMatch(nn.Module):
             masks = torch.stack([torch.from_numpy(polygons_to_bitmask(poly, gt_inst.image_size[0], gt_inst.image_size[1])).to(self.device) for poly in gt_masks.polygons], 0)
             masks_pad = masks.new_full((masks.shape[0], images.tensor.shape[-2], images.tensor.shape[-1]), False)
             masks_pad[:,:masks.shape[-2], :masks.shape[-1]].copy_(masks)
-            pdb.set_trace()
+
             row_ind, col_ind = MatchDice(score_inst_sig_thing[i:i+1], torch.unsqueeze(masks_pad,0), score_conf_softmax[i:i+1], gt_classes)
             col_ind_empty = np.setdiff1d(np.arange(score_inst_sig_thing[i:i+1].shape[1]), col_ind)
 
-            score_inst_sig_perm = torch.cat((score_inst_sig[b,:self.background_channel],
-                                            score_inst_b[0,col_ind,:,:]),0)
+            score_inst_sig_perm = torch.cat((score_inst_sig_stuff[i],
+                                            score_inst_sig_thing[i,col_ind,:,:]),0)
 
-            target_inst_perm = torch.cat((target_inst[b,:self.background_channel],
-                                            target_inst_b[0,row_ind,:,:]),0).float()
+            target_inst_perm = torch.cat((gt_stuff[i].float(),
+                                        masks_pad[row_ind].float()),0)
 
+            loss_stuff_dice_tmp, loss_thing_dice_tmp = dice_loss(score_inst_sig_perm,
+                                                                target_inst_perm,
+                                                                num_inst, 
+                                                                background_channels=BACKGROUND_NUM, 
+                                                                valid_mask=None, 
+                                                                sigmoid_clip=True)
+            loss_stuff_dice += loss_stuff_dice_tmp
+            loss_thing_dice += loss_thing_dice_tmp
 
-            pdb.set_trace()
-            #mask = torch.from_numpy(mask)
+            target_conf = gt_classes.new_full((score_conf.shape[1],), FOREGROUND_NUM)
+            target_conf[:len(gt_classes)] = gt_classes
+            loss_conf_tmp = conf_loss(torch.cat((score_conf[i,col_ind], score_conf[i,col_ind_empty]), 0), 
+                                        target_conf.long(), 
+                                        neg_factor=10,
+                                        neg_idx=FOREGROUND_NUM)
+            loss_conf += loss_conf_tmp
+
+            loss_stuff_focal_tmp = focal_loss(score_inst_sig_stuff[i],
+                                                gt_stuff[i].float(),
+                                                valid_mask=None, 
+                                                sigmoid_clip=True)
+            loss_stuff_focal += loss_stuff_focal_tmp
+
+        loss_stuff_focal = loss_stuff_focal / len(batched_inputs)
+        loss_stuff_dice = loss_stuff_dice / len(batched_inputs)
+        loss_conf = loss_conf / len(batched_inputs)
+
+        loss_stuff_focal = loss_stuff_focal*100.
         
 
         if self.training:
             losses = {}
-            losses.update(sem_seg_losses)
-            losses.update({k: v * self.instance_loss_weight for k, v in detector_losses.items()})
+            losses.update({"loss_sem_seg": sem_seg_losses})
+            losses.update({"loss_stuff_focal": loss_stuff_focal})
+            losses.update({"loss_stuff_dice": loss_stuff_dice})
+            losses.update({"loss_thing_dice": loss_thing_dice})
+            losses.update({"loss_conf": loss_conf})
             return losses
 
         processed_results = []
-        for sem_seg_result, detector_result, input_per_image, image_size in zip(
+        '''for sem_seg_result, detector_result, input_per_image, image_size in zip(
             sem_seg_results, detector_results, batched_inputs, images.image_sizes
         ):
             height = input_per_image.get("height", image_size[0])
@@ -175,7 +213,7 @@ class PanopticMatch(nn.Module):
                     self.combine_stuff_area_limit,
                     self.combine_instances_confidence_threshold,
                 )
-                processed_results[-1]["panoptic_seg"] = panoptic_r
+                processed_results[-1]["panoptic_seg"] = panoptic_r'''
         return processed_results
 
 
@@ -645,7 +683,7 @@ class HighResolutionNet(nn.Module):
         )
 
         self.num_instance = extra.NUM_INSTANCES
-        self.last_layer_conf_fc = nn.Linear(4*last_inp_channels, extra.NUM_INSTANCES*FOREGROUND_NUM)
+        self.last_layer_conf_fc = nn.Linear(4*last_inp_channels, extra.NUM_INSTANCES*(FOREGROUND_NUM+1))
 
     def _make_transition_layer(
             self, num_channels_pre_layer, num_channels_cur_layer):
