@@ -135,6 +135,27 @@ class CrossEntropy(nn.Module):
 
         return loss
 
+def MatchDice(score_inst_sig, target_inst, score_conf_softmax, gt_classes):
+    assert score_inst_sig.shape[-2] == target_inst.shape[-2] and score_inst_sig.shape[-1] == target_inst.shape[-1]
+    h, w = target_inst.size(2), target_inst.size(3)
+    with torch.no_grad():     
+        score_inst_downsample = F.interpolate(input=score_inst_sig, size=(h//4, w//4), mode='bilinear') 
+        target_inst_downsample = F.interpolate(input=target_inst.float(), size=(h//4, w//4), mode='nearest') 
+
+        dim_flatten = target_inst_downsample.shape[1]*score_inst_downsample.shape[1]
+        
+        output_x = torch.reshape(score_inst_downsample.expand(target_inst_downsample.shape[1],-1,-1,-1), 
+            (dim_flatten,score_inst_downsample.shape[2], score_inst_downsample.shape[3]))
+        label_x = torch.reshape(target_inst_downsample.expand(score_inst_downsample.shape[1],-1,-1,-1).permute(1,0,2,3), (dim_flatten,target_inst_downsample.shape[2], target_inst_downsample.shape[3]))
+
+        iou_flatten = dice_match(output_x.detach(), label_x.detach(), sigmoid_clip=True)
+            
+        iou_matrix = iou_flatten.view(target_inst_downsample.shape[1], score_inst_downsample.shape[1])
+        if iou_matrix.shape[0]:
+            iou_matrix += score_conf_softmax[0][:,gt_classes].permute(1,0).detach()
+        row_ind, col_ind = linear_sum_assignment(-iou_matrix.cpu().numpy())
+        return row_ind, col_ind
+
 
 class MatchDiceConfCate(nn.Module):
     def __init__(self, ignore_label=-1, weight=None, background_channel=11, channel_shuffle=False, iou_use_smooth=True, sigmoid_clip=False, match_with_dice=False, no_focal_loss=False, focal_weight=1., factor_empty=5, conf_weight=5.):

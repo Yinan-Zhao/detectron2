@@ -20,7 +20,7 @@ from detectron2.structures.masks import polygons_to_bitmask
 
 from ..postprocessing import detector_postprocess, sem_seg_postprocess
 from .build import META_ARCH_REGISTRY
-from .criterion_confCate import CrossEntropy
+from .criterion_confCate import CrossEntropy, MatchDice
 
 import pdb
 
@@ -53,7 +53,8 @@ class PanopticMatch(nn.Module):
 
         self.seg_model = get_seg_model(cfg)
         self.criterion_sem = CrossEntropy(ignore_label=IGNORE_LABEL_SEM-1)
-
+        self.sigmoid_layer = nn.Sigmoid()
+        self.softmax_layer = nn.Softmax(dim=2)
 
         self.register_buffer("pixel_mean", torch.Tensor(cfg.MODEL.PIXEL_MEAN).view(-1, 1, 1))
         self.register_buffer("pixel_std", torch.Tensor(cfg.MODEL.PIXEL_STD).view(-1, 1, 1))
@@ -99,6 +100,12 @@ class PanopticMatch(nn.Module):
         score_sem = F.upsample(
                 input=score_sem, size=(h, w), mode='bilinear')
 
+        score_conf_softmax = self.softmax_layer(score_conf)
+
+        score_inst_sig = self.sigmoid_layer(score_inst)
+        score_inst_sig_stuff = score_inst_sig[:,:BACKGROUND_NUM]
+        score_inst_sig_thing = score_inst_sig[:,BACKGROUND_NUM:]
+
         if "sem_seg" in batched_inputs[0]:
             gt_sem_seg = [x["sem_seg"].to(self.device) for x in batched_inputs]
             gt_sem_seg = ImageList.from_tensors(
@@ -115,12 +122,30 @@ class PanopticMatch(nn.Module):
             gt_instances = None
         #pdb.set_trace()
 
+        gt_sem_seg[gt_sem_seg>BACKGROUND_NUM] = 0
+        pdb.set_trace()
+        gt_stuff = F.one_hot(gt_sem_seg, num_classes=BACKGROUND_NUM+1)
+        
+
         for i in range(len(batched_inputs)):
             gt_inst = gt_instances[i]
             num_inst = len(gt_inst)
             gt_classes = gt_inst.gt_classes
             gt_masks = gt_inst.gt_masks
-            masks = [torch.from_numpy(polygons_to_bitmask(poly, gt_inst.image_size[0], gt_inst.image_size[1])).to(self.device) for poly in gt_masks.polygons]
+            masks = torch.stack([torch.from_numpy(polygons_to_bitmask(poly, gt_inst.image_size[0], gt_inst.image_size[1])).to(self.device) for poly in gt_masks.polygons], 0)
+            masks_pad = masks.new_full((masks.shape[0], images.tensor.shape[-2], images.tensor.shape[-1]), False)
+            masks_pad[:,:masks.shape[-2], :masks.shape[-1]].copy_(masks)
+            pdb.set_trace()
+            row_ind, col_ind = MatchDice(score_inst_sig_thing[i:i+1], torch.unsqueeze(masks_pad,0), score_conf_softmax[i:i+1], gt_classes)
+            col_ind_empty = np.setdiff1d(np.arange(score_inst_sig_thing[i:i+1].shape[1]), col_ind)
+
+            score_inst_sig_perm = torch.cat((score_inst_sig[b,:self.background_channel],
+                                            score_inst_b[0,col_ind,:,:]),0)
+
+            target_inst_perm = torch.cat((target_inst[b,:self.background_channel],
+                                            target_inst_b[0,row_ind,:,:]),0).float()
+
+
             pdb.set_trace()
             #mask = torch.from_numpy(mask)
         
