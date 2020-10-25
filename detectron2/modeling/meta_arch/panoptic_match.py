@@ -467,7 +467,7 @@ blocks_dict = {
 class HighResolutionNet(nn.Module):
 
     def __init__(self, config, **kwargs):
-        extra = config.MODEL.EXTRA
+        extra = config.MODEL.HRNET
         super(HighResolutionNet, self).__init__()
 
         '''x_linspace = np.linspace(-1, 1, 256)
