@@ -96,7 +96,7 @@ class PanopticMatch(nn.Module):
                   See the return value of
                   :func:`combine_semantic_and_instance_outputs` for its format.
         """
-        
+        print(torch.distributed.is_initialized())
         images = [x["image"].to(self.device) for x in batched_inputs]
         images = [(x - self.pixel_mean) / self.pixel_std for x in images]
         images = ImageList.from_tensors(images, SIZE_DIVISIBILITY)
@@ -136,7 +136,7 @@ class PanopticMatch(nn.Module):
 
         num_inst = sum([len(gt_instances[i]) for i in range(len(gt_instances))])
         num_inst = torch.as_tensor([num_inst], dtype=torch.float, device=score_inst.device)
-        pdb.set_trace()
+        #pdb.set_trace()
         if is_dist_avail_and_initialized():
             torch.distributed.all_reduce(num_inst)
         num_inst = torch.clamp(num_inst / get_world_size(), min=1).item()  
