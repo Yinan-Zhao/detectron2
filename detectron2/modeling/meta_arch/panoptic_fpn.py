@@ -78,6 +78,8 @@ class PanopticFPN(nn.Module):
         images = ImageList.from_tensors(images, self.backbone.size_divisibility)
         features = self.backbone(images.tensor)
 
+        pdb.set_trace()
+
         if "proposals" in batched_inputs[0]:
             proposals = [x["proposals"].to(self.device) for x in batched_inputs]
             proposal_losses = {}
