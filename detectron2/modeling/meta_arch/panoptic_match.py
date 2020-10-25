@@ -120,7 +120,7 @@ class PanopticMatch(nn.Module):
             num_inst = len(gt_inst)
             gt_classes = gt_inst.gt_classes
             gt_masks = gt_inst.gt_masks
-            masks = [torch.from_numpy(polygons_to_bitmask(poly, gt_inst.image_size[0], gt_inst.image_size[1]))to(self.device) for poly in gt_masks.polygons]
+            masks = [torch.from_numpy(polygons_to_bitmask(poly, gt_inst.image_size[0], gt_inst.image_size[1])).to(self.device) for poly in gt_masks.polygons]
             pdb.set_trace()
             #mask = torch.from_numpy(mask)
         
