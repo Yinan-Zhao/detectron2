@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 IGNORE_LABEL_SEM = 255
 SIZE_DIVISIBILITY = 32
 BACKGROUND_NUM = 53
+FOREGROUND_NUM = 80
 
 __all__ = ["PanopticMatch",
             "conv3x3",
@@ -550,7 +551,7 @@ class HighResolutionNet(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(
                 in_channels=last_inp_channels,
-                out_channels=config.DATASET.NUM_INSTANCES,
+                out_channels=extra.NUM_INSTANCES,
                 kernel_size=extra.FINAL_CONV_KERNEL,
                 stride=1,
                 padding=1 if extra.FINAL_CONV_KERNEL == 3 else 0)
@@ -567,7 +568,7 @@ class HighResolutionNet(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(
                 in_channels=last_inp_channels,
-                out_channels=config.DATASET.BACKGROUND_CLASSES,
+                out_channels=BACKGROUND_NUM,
                 kernel_size=extra.FINAL_CONV_KERNEL,
                 stride=1,
                 padding=1 if extra.FINAL_CONV_KERNEL == 3 else 0)
@@ -584,7 +585,7 @@ class HighResolutionNet(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(
                 in_channels=last_inp_channels,
-                out_channels=config.DATASET.NUM_CLASSES,
+                out_channels=BACKGROUND_NUM+FOREGROUND_NUM,
                 kernel_size=extra.FINAL_CONV_KERNEL,
                 stride=1,
                 padding=1 if extra.FINAL_CONV_KERNEL == 3 else 0)
@@ -608,9 +609,8 @@ class HighResolutionNet(nn.Module):
             BatchNorm2d(4*last_inp_channels, momentum=BN_MOMENTUM),
             nn.ReLU(inplace=True),
         )
-        self.num_instance = config.DATASET.NUM_INSTANCES
-        self.num_foreground_class = config.DATASET.NUM_CLASSES-config.DATASET.BACKGROUND_CLASSES+1
-        self.last_layer_conf_fc = nn.Linear(4*last_inp_channels, self.num_instance*self.num_foreground_class)
+
+        self.last_layer_conf_fc = nn.Linear(4*last_inp_channels, extra.NUM_INSTANCES*FOREGROUND_NUM)
 
     def _make_transition_layer(
             self, num_channels_pre_layer, num_channels_cur_layer):

@@ -3,6 +3,7 @@ MODEL:
   META_ARCHITECTURE: "PanopticMatch"
   HRNET:
     PRETRAINED: 'pretrained_models/hrnet_w18_small_model_v2.pth'
+    NUM_INSTANCES: 100
     FINAL_CONV_KERNEL: 1
     STAGE1:
       NUM_MODULES: 1
