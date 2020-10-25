@@ -130,8 +130,6 @@ def setup(args):
 
 def main(args):
     cfg = setup(args)
-    torch.distributed.init_process_group(
-            backend="nccl", init_method="env://",)
 
     if args.eval_only:
         model = Trainer.build_model(cfg)

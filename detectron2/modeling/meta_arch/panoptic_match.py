@@ -42,6 +42,13 @@ __all__ = ["PanopticMatch",
             "HighResolutionNet",
             "blocks_dict"]
 
+def is_dist_avail_and_initialized():
+    if not dist.is_available():
+        return False
+    if not dist.is_initialized():
+        return False
+    return True
+
 
 @META_ARCH_REGISTRY.register()
 class PanopticMatch(nn.Module):
@@ -129,7 +136,9 @@ class PanopticMatch(nn.Module):
 
         num_inst = sum([len(gt_instances[i]) for i in range(len(gt_instances))])
         num_inst = torch.as_tensor([num_inst], dtype=torch.float, device=score_inst.device)
-        torch.distributed.all_reduce(num_inst)
+        pdb.set_trace()
+        if is_dist_avail_and_initialized():
+            torch.distributed.all_reduce(num_inst)
         num_inst = torch.clamp(num_inst / get_world_size(), min=1).item()  
 
         loss_stuff_dice = 0.
