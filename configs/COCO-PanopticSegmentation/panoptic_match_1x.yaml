@@ -57,4 +57,4 @@ DATASETS:
   TRAIN: ("coco_2017_train_panoptic_separated",)
   TEST: ("coco_2017_val_panoptic_separated",)
 SOLVER:
-  IMS_PER_BATCH: 4
+  IMS_PER_BATCH: 2
