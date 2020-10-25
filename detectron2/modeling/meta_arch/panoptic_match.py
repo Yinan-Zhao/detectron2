@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import torch
 from torch import nn
 import torch._utils
 import torch.nn.functional as F
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 import logging
