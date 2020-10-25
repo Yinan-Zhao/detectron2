@@ -106,6 +106,7 @@ class PanopticMatch(nn.Module):
             ).tensor
         else:
             gt_sem_seg = None
+        assert (gt_sem_seg-1<0).sum() == 0
         sem_seg_losses = self.criterion_sem(score_sem, gt_sem_seg-1)
         
         if "instances" in batched_inputs[0]:
@@ -119,7 +120,7 @@ class PanopticMatch(nn.Module):
             num_inst = len(gt_inst)
             gt_classes = gt_inst.gt_classes
             gt_masks = gt_inst.gt_masks
-            masks = [torch.from_numpy(polygons_to_bitmask(poly, gt_inst.image_size[0], gt_inst.image_size[1])) for poly in gt_masks.polygons]
+            masks = [torch.from_numpy(polygons_to_bitmask(poly, gt_inst.image_size[0], gt_inst.image_size[1]))to(self.device) for poly in gt_masks.polygons]
             pdb.set_trace()
             #mask = torch.from_numpy(mask)
         
