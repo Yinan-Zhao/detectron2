@@ -4,7 +4,7 @@
 # Written by Ke Sun (sunk@mail.ustc.edu.cn)
 # ------------------------------------------------------------------------------
 
-import torch
+'''import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from scipy.optimize import linear_sum_assignment
@@ -230,5 +230,5 @@ class MatchDiceConfCate(nn.Module):
 
         loss = loss_stuff_focal*self.focal_weight + loss_stuff_dice + loss_thing_dice + loss_conf*self.conf_weight
 
-        return loss/4.
+        return loss/4.'''
 

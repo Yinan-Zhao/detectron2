@@ -19,7 +19,7 @@ from detectron2.structures import ImageList
 
 from ..postprocessing import detector_postprocess, sem_seg_postprocess
 from .build import META_ARCH_REGISTRY
-from .criterion_confCate import MatchDiceConfCate
+#from .criterion_confCate import MatchDiceConfCate
 
 import pdb
 
