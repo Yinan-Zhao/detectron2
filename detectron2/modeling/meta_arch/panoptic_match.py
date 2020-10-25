@@ -127,7 +127,7 @@ class PanopticMatch(nn.Module):
         gt_stuff = F.one_hot(gt_sem_seg, num_classes=BACKGROUND_NUM+1).permute(0,3,1,2)
         gt_stuff = gt_stuff[:,1:]
 
-        num_inst = sum([len(gt_instances[i]) for i in len(gt_instances)])
+        num_inst = sum([len(gt_instances[i]) for i in range(len(gt_instances))])
         num_inst = torch.as_tensor([num_inst], dtype=torch.float, device=score_inst.device)
         torch.distributed.all_reduce(num_inst)
         num_inst = torch.clamp(num_inst / get_world_size(), min=1).item()  
