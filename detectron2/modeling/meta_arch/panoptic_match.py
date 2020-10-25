@@ -16,6 +16,7 @@ import functools
 import numpy as np
 
 from detectron2.structures import ImageList
+from detectron2.structures.masks import polygons_to_bitmask
 
 from ..postprocessing import detector_postprocess, sem_seg_postprocess
 from .build import META_ARCH_REGISTRY
@@ -86,7 +87,6 @@ class PanopticMatch(nn.Module):
                   See the return value of
                   :func:`combine_semantic_and_instance_outputs` for its format.
         """
-        pdb.set_trace()
         
         images = [x["image"].to(self.device) for x in batched_inputs]
         images = [(x - self.pixel_mean) / self.pixel_std for x in images]
@@ -112,8 +112,16 @@ class PanopticMatch(nn.Module):
             gt_instances = [x["instances"].to(self.device) for x in batched_inputs]
         else:
             gt_instances = None
-        pdb.set_trace()
+        #pdb.set_trace()
 
+        for i in range(len(batched_inputs)):
+            gt_inst = gt_instances[i]
+            num_inst = len(gt_inst)
+            gt_classes = gt_inst.gt_classes
+            gt_masks = gt_inst.gt_masks
+            masks = [torch.from_numpy(polygons_to_bitmask(poly, gt_inst.image_size[0], gt_inst.image_size[1])) for poly in gt_masks.polygons]
+            pdb.set_trace()
+            #mask = torch.from_numpy(mask)
         
 
         if self.training:
