@@ -117,6 +117,24 @@ def conf_loss(input, target, neg_factor=10):
     loss = loss/ce_loss.shape[0]
     return loss
 
+class CrossEntropy(nn.Module):
+    def __init__(self, ignore_label=-1, weight=None):
+        super(CrossEntropy, self).__init__()
+        self.ignore_label = ignore_label
+        self.criterion = nn.CrossEntropyLoss(weight=weight, 
+                                             ignore_index=ignore_label)
+
+    def forward(self, score, target):
+        ph, pw = score.size(2), score.size(3)
+        h, w = target.size(1), target.size(2)
+        if ph != h or pw != w:
+            score = F.upsample(
+                    input=score, size=(h, w), mode='bilinear')
+
+        loss = self.criterion(score, target)
+
+        return loss
+
 
 class MatchDiceConfCate(nn.Module):
     def __init__(self, ignore_label=-1, weight=None, background_channel=11, channel_shuffle=False, iou_use_smooth=True, sigmoid_clip=False, match_with_dice=False, no_focal_loss=False, focal_weight=1., factor_empty=5, conf_weight=5.):
