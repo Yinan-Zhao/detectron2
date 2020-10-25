@@ -610,6 +610,7 @@ class HighResolutionNet(nn.Module):
             nn.ReLU(inplace=True),
         )
 
+        self.num_instance = extra.NUM_INSTANCES
         self.last_layer_conf_fc = nn.Linear(4*last_inp_channels, extra.NUM_INSTANCES*FOREGROUND_NUM)
 
     def _make_transition_layer(
@@ -745,7 +746,7 @@ class HighResolutionNet(nn.Module):
         x_conf = self.last_layer_conf_conv(x)
         x_conf = torch.mean(x_conf,(2,3))
         x_conf = self.last_layer_conf_fc(x_conf)
-        x_conf = x_conf.view(x_conf.shape[0], extra.NUM_INSTANCES, FOREGROUND_NUM)
+        x_conf = x_conf.view(x_conf.shape[0], self.num_instance, FOREGROUND_NUM)
 
         return x_sem, x_inst, x_conf
 
