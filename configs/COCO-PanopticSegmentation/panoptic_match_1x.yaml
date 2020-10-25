@@ -1,9 +1,57 @@
 _BASE_: "Base-Panoptic-FPN.yaml"
 MODEL:
   META_ARCHITECTURE: "PanopticMatch"
-  WEIGHTS: "detectron2://ImageNetPretrained/MSRA/R-50.pkl"
-  RESNETS:
-    DEPTH: 50
+  HRNET:
+    PRETRAINED: 'pretrained_models/hrnet_w18_small_model_v2.pth'
+    FINAL_CONV_KERNEL: 1
+    STAGE1:
+      NUM_MODULES: 1
+      NUM_RANCHES: 1
+      BLOCK: BOTTLENECK
+      NUM_BLOCKS:
+      - 2
+      NUM_CHANNELS:
+      - 64
+      FUSE_METHOD: SUM
+    STAGE2:
+      NUM_MODULES: 1
+      NUM_BRANCHES: 2
+      BLOCK: BASIC
+      NUM_BLOCKS:
+      - 2
+      - 2
+      NUM_CHANNELS:
+      - 18
+      - 36
+      FUSE_METHOD: SUM
+    STAGE3:
+      NUM_MODULES: 3
+      NUM_BRANCHES: 3
+      BLOCK: BASIC
+      NUM_BLOCKS:
+      - 2
+      - 2
+      - 2
+      NUM_CHANNELS:
+      - 18
+      - 36
+      - 72
+      FUSE_METHOD: SUM
+    STAGE4:
+      NUM_MODULES: 2
+      NUM_BRANCHES: 4
+      BLOCK: BASIC
+      NUM_BLOCKS:
+      - 2
+      - 2
+      - 2
+      - 2
+      NUM_CHANNELS:
+      - 18
+      - 36
+      - 72
+      - 144
+      FUSE_METHOD: SUM
 DATASETS:
   TRAIN: ("coco_2017_train_panoptic_separated",)
   TEST: ("coco_2017_val_panoptic_separated",)

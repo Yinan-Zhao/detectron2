@@ -28,6 +28,8 @@ BN_MOMENTUM = 0.01
 logger = logging.getLogger(__name__)
 
 IGNORE_LABEL_SEM = 255
+SIZE_DIVISIBILITY = 32
+BACKGROUND_NUM = 53
 
 __all__ = ["PanopticMatch",
             "conv3x3",
@@ -84,38 +86,39 @@ class PanopticMatch(nn.Module):
                   :func:`combine_semantic_and_instance_outputs` for its format.
         """
         pdb.set_trace()
-        size_divisibility = 0
-
+        
         images = [x["image"].to(self.device) for x in batched_inputs]
         images = [(x - self.pixel_mean) / self.pixel_std for x in images]
-        images = ImageList.from_tensors(images, size_divisibility)
-        x_sem, x_inst, x_conf = self.seg_model(images.tensor)
+        images = ImageList.from_tensors(images, SIZE_DIVISIBILITY)
+        score_sem, score_inst, score_conf = self.seg_model(images.tensor)
+
+        h, w = images.tensor.size(2), images.tensor.size(3)
+        score_inst = F.upsample(
+                input=score_inst, size=(h, w), mode='bilinear')
+        score_sem = F.upsample(
+                input=score_sem, size=(h, w), mode='bilinear')
 
         if "sem_seg" in batched_inputs[0]:
             gt_sem_seg = [x["sem_seg"].to(self.device) for x in batched_inputs]
             gt_sem_seg = ImageList.from_tensors(
-                gt_sem_seg, size_divisibility, ignore_label_sem
+                gt_sem_seg, SIZE_DIVISIBILITY, IGNORE_LABEL_SEM
             ).tensor
         else:
             gt_sem_seg = None
-        sem_seg_losses = self.criterion_sem(x_sem, gt_sem_seg)
+        sem_seg_losses = self.criterion_sem(score_sem, gt_sem_seg-1)
         
-
         if "instances" in batched_inputs[0]:
             gt_instances = [x["instances"].to(self.device) for x in batched_inputs]
         else:
             gt_instances = None
-        if self.proposal_generator:
-            proposals, proposal_losses = self.proposal_generator(images, features, gt_instances)
-        detector_results, detector_losses = self.roi_heads(
-            images, features, proposals, gt_instances
-        )
+        pdb.set_trace()
+
+        
 
         if self.training:
             losses = {}
             losses.update(sem_seg_losses)
             losses.update({k: v * self.instance_loss_weight for k, v in detector_losses.items()})
-            losses.update(proposal_losses)
             return losses
 
         processed_results = []

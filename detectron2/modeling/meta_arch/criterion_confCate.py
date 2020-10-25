@@ -4,11 +4,11 @@
 # Written by Ke Sun (sunk@mail.ustc.edu.cn)
 # ------------------------------------------------------------------------------
 
-'''import torch
+import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from scipy.optimize import linear_sum_assignment
-from utils.utils import iou_pytorch, is_dist_avail_and_initialized, get_world_size
+from detectron2.utils.comm import get_world_size
 import numpy as np
 
 import pdb
@@ -150,8 +150,7 @@ class MatchDiceConfCate(nn.Module):
 
         num_inst = sum(label_inst_num)
         num_inst = torch.as_tensor([num_inst], dtype=torch.float, device=score_inst.device)
-        if is_dist_avail_and_initialized():
-            torch.distributed.all_reduce(num_inst)
+        torch.distributed.all_reduce(num_inst)
         num_inst = torch.clamp(num_inst / get_world_size(), min=1).item()  
 
         with torch.no_grad():     
@@ -230,5 +229,5 @@ class MatchDiceConfCate(nn.Module):
 
         loss = loss_stuff_focal*self.focal_weight + loss_stuff_dice + loss_thing_dice + loss_conf*self.conf_weight
 
-        return loss/4.'''
+        return loss/4.
 
