@@ -503,6 +503,10 @@ _C.MODEL.RESNETS.DEFORM_MODULATED = False
 _C.MODEL.RESNETS.DEFORM_NUM_GROUPS = 1
 
 
+# HRNet
+_C.MODEL.HRNET = CN(new_allowed=True)
+
+
 # ---------------------------------------------------------------------------- #
 # Solver
 # ---------------------------------------------------------------------------- #
