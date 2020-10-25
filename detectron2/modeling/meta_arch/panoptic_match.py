@@ -43,9 +43,9 @@ __all__ = ["PanopticMatch",
             "blocks_dict"]
 
 def is_dist_avail_and_initialized():
-    if not dist.is_available():
+    if not torch.distributed.is_available():
         return False
-    if not dist.is_initialized():
+    if not torch.distributed.is_initialized():
         return False
     return True
 
