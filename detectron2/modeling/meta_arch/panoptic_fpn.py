@@ -13,6 +13,8 @@ from ..roi_heads import build_roi_heads
 from .build import META_ARCH_REGISTRY
 from .semantic_seg import build_sem_seg_head
 
+import pdb
+
 __all__ = ["PanopticFPN"]
 
 
