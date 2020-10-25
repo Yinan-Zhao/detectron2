@@ -745,7 +745,7 @@ class HighResolutionNet(nn.Module):
         x_conf = self.last_layer_conf_conv(x)
         x_conf = torch.mean(x_conf,(2,3))
         x_conf = self.last_layer_conf_fc(x_conf)
-        x_conf = x_conf.view(x_conf.shape[0], self.num_instance, self.num_foreground_class)
+        x_conf = x_conf.view(x_conf.shape[0], extra.NUM_INSTANCES, FOREGROUND_NUM)
 
         return x_sem, x_inst, x_conf
 
