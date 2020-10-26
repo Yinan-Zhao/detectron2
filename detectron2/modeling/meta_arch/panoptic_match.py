@@ -134,6 +134,7 @@ class PanopticMatch(nn.Module):
         gt_stuff = gt_stuff[:,1:]
 
         num_inst = sum([len(gt_instances[i]) for i in range(len(gt_instances))])
+        print(num_inst)
         num_inst = torch.as_tensor([num_inst], dtype=torch.float, device=score_inst.device)
         print('before %d'%(num_inst))
         #pdb.set_trace()
