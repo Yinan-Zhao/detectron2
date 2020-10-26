@@ -175,7 +175,7 @@ class PanopticMatch(nn.Module):
             loss_thing_dice += loss_thing_dice_tmp
 
             target_conf = gt_classes.new_full((score_conf.shape[1],), FOREGROUND_NUM)
-            target_conf[:len(gt_classes)] = gt_classes
+            target_conf[:len(gt_classes[row_ind])] = gt_classes[row_ind]
             loss_conf_tmp = conf_loss(torch.cat((score_conf[i,col_ind], score_conf[i,col_ind_empty]), 0), 
                                         target_conf.long(), 
                                         neg_factor=10,
