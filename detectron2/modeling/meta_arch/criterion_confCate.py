@@ -37,9 +37,10 @@ def dice_loss(input, target, num_inst, background_channels=11, valid_mask=None, 
     d = (2*a+1) / (b+c+1)
 
     thing_loss = (1-d[background_channels:][c[background_channels:]!=0]).sum()
-    thing_loss /= num_inst
-    if torch.isnan(thing_loss):
-        pdb.set_trace()
+    if num_inst == 0:
+        thing_loss = 0
+    else:
+        thing_loss /= num_inst
 
     stuff_loss = (1-d[:background_channels]).mean()
 
