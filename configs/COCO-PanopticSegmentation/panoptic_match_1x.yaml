@@ -58,4 +58,4 @@ DATASETS:
   TEST: ("coco_2017_val_panoptic_separated",)
 SOLVER:
   IMS_PER_BATCH: 2
-  BASE_LR: 0.0001
+  BASE_LR: 0.01
