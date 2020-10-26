@@ -96,7 +96,6 @@ class PanopticMatch(nn.Module):
                   See the return value of
                   :func:`combine_semantic_and_instance_outputs` for its format.
         """
-        print(torch.distributed.is_initialized())
         images = [x["image"].to(self.device) for x in batched_inputs]
         images = [(x - self.pixel_mean) / self.pixel_std for x in images]
         images = ImageList.from_tensors(images, SIZE_DIVISIBILITY)
@@ -150,7 +149,11 @@ class PanopticMatch(nn.Module):
             gt_inst = gt_instances[i]
             num_inst = len(gt_inst)
             gt_classes = gt_inst.gt_classes
-            gt_masks = gt_inst.gt_masks
+            
+            try:
+                gt_masks = gt_inst.gt_masks
+            except:
+                pdb.set_trace()
             masks = torch.stack([torch.from_numpy(polygons_to_bitmask(poly, gt_inst.image_size[0], gt_inst.image_size[1])).to(self.device) for poly in gt_masks.polygons], 0)
             masks_pad = masks.new_full((masks.shape[0], images.tensor.shape[-2], images.tensor.shape[-1]), False)
             masks_pad[:,:masks.shape[-2], :masks.shape[-1]].copy_(masks)
