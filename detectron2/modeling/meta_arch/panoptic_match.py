@@ -151,7 +151,6 @@ class PanopticMatch(nn.Module):
 
         for i in range(len(batched_inputs)):
             gt_inst = gt_instances[i]
-            num_inst = len(gt_inst)
             gt_classes = gt_inst.gt_classes
             
             if gt_inst.has('gt_masks'):
