@@ -3,7 +3,7 @@ MODEL:
   META_ARCHITECTURE: "PanopticMatch"
   HRNET:
     PRETRAINED: 'pretrained_models/hrnet_w18_small_model_v2.pth'
-    NUM_INSTANCES: 80
+    NUM_INSTANCES: 100
     FINAL_CONV_KERNEL: 1
     STAGE1:
       NUM_MODULES: 1
@@ -57,5 +57,8 @@ DATASETS:
   TRAIN: ("coco_2017_train_panoptic_separated",)
   TEST: ("coco_2017_val_panoptic_separated",)
 SOLVER:
-  IMS_PER_BATCH: 16
-  BASE_LR: 0.01
+  IMS_PER_BATCH: 12
+  BASE_LR: 0.002
+  STEPS: (60000, 80000)
+  MAX_ITER: 100000
+  CHECKPOINT_PERIOD: 100

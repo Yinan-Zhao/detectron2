@@ -96,7 +96,6 @@ class PanopticMatch(nn.Module):
                   See the return value of
                   :func:`combine_semantic_and_instance_outputs` for its format.
         """
-        pdb.set_trace()
         images = [x["image"].to(self.device) for x in batched_inputs]
         images = [(x - self.pixel_mean) / self.pixel_std for x in images]
         images = ImageList.from_tensors(images, SIZE_DIVISIBILITY)
@@ -157,7 +156,6 @@ class PanopticMatch(nn.Module):
             else:
                 masks_pad = torch.zeros([0, images.tensor.shape[-2], images.tensor.shape[-1]], dtype=torch.bool, device=self.device)
             
-
             row_ind, col_ind = MatchDice(score_inst_sig_thing[i:i+1], torch.unsqueeze(masks_pad,0), score_conf_softmax[i:i+1], gt_classes)
             col_ind_empty = np.setdiff1d(np.arange(score_inst_sig_thing[i:i+1].shape[1]), col_ind)
 

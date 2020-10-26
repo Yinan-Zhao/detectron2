@@ -145,7 +145,7 @@ def MatchDice(score_inst_sig, target_inst, score_conf_softmax, gt_classes):
         if target_inst.shape[1]:
             target_inst_downsample = F.interpolate(input=target_inst.float(), size=(h//4, w//4), mode='nearest') 
         else:
-            target_inst_downsample = target_inst.new_full((target_inst.shape[0],target_inst.shape[1],target_inst.shape[2]//4,target_inst.shape[3]//4), False)
+            target_inst_downsample = target_inst.new_full((target_inst.shape[0],target_inst.shape[1],h//4,w//4), False)
 
         dim_flatten = target_inst_downsample.shape[1]*score_inst_downsample.shape[1]
         
