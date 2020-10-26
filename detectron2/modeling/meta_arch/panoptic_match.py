@@ -135,10 +135,13 @@ class PanopticMatch(nn.Module):
 
         num_inst = sum([len(gt_instances[i]) for i in range(len(gt_instances))])
         num_inst = torch.as_tensor([num_inst], dtype=torch.float, device=score_inst.device)
+        print('before %d'%(num_inst))
         #pdb.set_trace()
         if is_dist_avail_and_initialized():
             torch.distributed.all_reduce(num_inst)
+        print('after %d'%(num_inst))
         num_inst = torch.clamp(num_inst / get_world_size(), min=1).item()  
+        print('final %d'%(num_inst))
 
         loss_stuff_dice = 0.
         loss_thing_dice = 0.
@@ -196,7 +199,7 @@ class PanopticMatch(nn.Module):
         loss_conf = loss_conf / len(batched_inputs)
 
         loss_stuff_focal = loss_stuff_focal*100.
-        
+        loss_conf = loss_conf*5
 
         if self.training:
             losses = {}
