@@ -205,7 +205,6 @@ class PanopticMatch(nn.Module):
             losses.update({"loss_stuff_dice": loss_stuff_dice})
             losses.update({"loss_thing_dice": loss_thing_dice})
             losses.update({"loss_conf": loss_conf})
-            print(loss_thing_dice)
             return losses
 
         processed_results = []
