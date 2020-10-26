@@ -178,6 +178,7 @@ class PanopticMatch(nn.Module):
                                                                 background_channels=BACKGROUND_NUM, 
                                                                 valid_mask=None, 
                                                                 sigmoid_clip=True)
+            print(loss_thing_dice_tmp)
             loss_stuff_dice += loss_stuff_dice_tmp
             loss_thing_dice += loss_thing_dice_tmp
 
