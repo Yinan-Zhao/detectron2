@@ -122,7 +122,6 @@ class PanopticFPN(nn.Module):
             detector_r = detector_postprocess(detector_result, height, width)
 
             processed_results.append({"sem_seg": sem_seg_r, "instances": detector_r})
-            pdb.set_trace()
 
             if self.combine_on:
                 panoptic_r = combine_semantic_and_instance_outputs(
