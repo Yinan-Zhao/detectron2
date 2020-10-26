@@ -204,8 +204,23 @@ class PanopticMatch(nn.Module):
             losses.update({"loss_conf": loss_conf})
             return losses
 
+        score_sem_null = score_sem.new_full((score_sem.shape[0], 1, score_sem.shape[-2], score_sem.shape[-1]), -1000.)
         processed_results = []
-        '''for sem_seg_result, detector_result, input_per_image, image_size in zip(
+        for i in range(len(batched_inputs)):
+            height = batched_inputs[i].get("height", images.image_sizes[i][0])
+            width = batched_inputs[i].get("width", images.image_sizes[i][1])
+
+            res = {}
+
+            sem_seg_result = torch.cat((score_sem_null[i:i+1],score_sem[i:i+1]), 1)
+            sem_seg_r = sem_seg_postprocess(sem_seg_result, images.image_sizes[i], height, width)
+            detector_r = detector_postprocess(detector_result, height, width)
+            res.update({"sem_seg": sem_seg_r})
+
+            processed_results.append(res)
+
+
+        for sem_seg_result, detector_result, input_per_image, image_size in zip(
             sem_seg_results, detector_results, batched_inputs, images.image_sizes
         ):
             height = input_per_image.get("height", image_size[0])
@@ -223,7 +238,7 @@ class PanopticMatch(nn.Module):
                     self.combine_stuff_area_limit,
                     self.combine_instances_confidence_threshold,
                 )
-                processed_results[-1]["panoptic_seg"] = panoptic_r'''
+                processed_results[-1]["panoptic_seg"] = panoptic_r
         return processed_results
 
 
