@@ -15,7 +15,7 @@ import logging
 import functools
 import numpy as np
 
-from detectron2.structures import ImageList
+from detectron2.structures import ImageList, Boxes, Instances
 from detectron2.structures.masks import polygons_to_bitmask
 from detectron2.utils.comm import get_world_size
 
@@ -214,13 +214,23 @@ class PanopticMatch(nn.Module):
 
             sem_seg_result = torch.cat((score_sem_null[i:i+1],score_sem[i:i+1]), 1)
             sem_seg_r = sem_seg_postprocess(sem_seg_result, images.image_sizes[i], height, width)
-            detector_r = detector_postprocess(detector_result, height, width)
+            
             res.update({"sem_seg": sem_seg_r})
+
+            result = Instances(images.image_sizes[i])
+            inst_sem_id = torch.argmax(score_conf_softmax[i], dim=1)
+            scores = score_conf_softmax[i,range(score_conf.shape[1]),inst_sem_id]
+            result.scores = scores[inst_sem_id!=FOREGROUND_NUM]
+            result.pred_classes = inst_sem_id[inst_sem_id!=FOREGROUND_NUM]
+            result.pred_masks = score_inst_sig_thing[i,inst_sem_id!=FOREGROUND_NUM] > 0.5
+
+            detector_r = detector_postprocess(result, height, width)
+            res.update({"instances": detector_r})
 
             processed_results.append(res)
 
 
-        for sem_seg_result, detector_result, input_per_image, image_size in zip(
+        '''for sem_seg_result, detector_result, input_per_image, image_size in zip(
             sem_seg_results, detector_results, batched_inputs, images.image_sizes
         ):
             height = input_per_image.get("height", image_size[0])
@@ -238,7 +248,7 @@ class PanopticMatch(nn.Module):
                     self.combine_stuff_area_limit,
                     self.combine_instances_confidence_threshold,
                 )
-                processed_results[-1]["panoptic_seg"] = panoptic_r
+                processed_results[-1]["panoptic_seg"] = panoptic_r'''
         return processed_results
 
 
