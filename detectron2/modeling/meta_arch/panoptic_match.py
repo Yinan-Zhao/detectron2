@@ -134,15 +134,10 @@ class PanopticMatch(nn.Module):
         gt_stuff = gt_stuff[:,1:]
 
         num_inst = sum([len(gt_instances[i]) for i in range(len(gt_instances))])
-        print([len(gt_instances[i]) for i in range(len(gt_instances))])
         num_inst = torch.as_tensor([num_inst], dtype=torch.float, device=score_inst.device)
-        print('before %d'%(num_inst))
-        #pdb.set_trace()
         if is_dist_avail_and_initialized():
             torch.distributed.all_reduce(num_inst)
-        print('after %d'%(num_inst))
         num_inst = torch.clamp(num_inst / get_world_size(), min=1).item()  
-        print('final %d'%(num_inst))
 
         loss_stuff_dice = 0.
         loss_thing_dice = 0.
@@ -177,7 +172,6 @@ class PanopticMatch(nn.Module):
                                                                 background_channels=BACKGROUND_NUM, 
                                                                 valid_mask=None, 
                                                                 sigmoid_clip=True)
-            print(loss_thing_dice_tmp)
             loss_stuff_dice += loss_stuff_dice_tmp
             loss_thing_dice += loss_thing_dice_tmp
 
