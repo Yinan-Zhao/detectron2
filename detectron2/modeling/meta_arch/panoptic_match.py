@@ -150,13 +150,14 @@ class PanopticMatch(nn.Module):
             num_inst = len(gt_inst)
             gt_classes = gt_inst.gt_classes
             
-            try:
+            if gt_inst.has('gt_masks'):
                 gt_masks = gt_inst.gt_masks
-            except:
-                pdb.set_trace()
-            masks = torch.stack([torch.from_numpy(polygons_to_bitmask(poly, gt_inst.image_size[0], gt_inst.image_size[1])).to(self.device) for poly in gt_masks.polygons], 0)
-            masks_pad = masks.new_full((masks.shape[0], images.tensor.shape[-2], images.tensor.shape[-1]), False)
-            masks_pad[:,:masks.shape[-2], :masks.shape[-1]].copy_(masks)
+                masks = torch.stack([torch.from_numpy(polygons_to_bitmask(poly, gt_inst.image_size[0], gt_inst.image_size[1])).to(self.device) for poly in gt_masks.polygons], 0)
+                masks_pad = masks.new_full((masks.shape[0], images.tensor.shape[-2], images.tensor.shape[-1]), False)
+                masks_pad[:,:masks.shape[-2], :masks.shape[-1]].copy_(masks)
+            else:
+                masks_pad = torch.zeros([0, images.tensor.shape[-2], images.tensor.shape[-1]], dtype=torch.bool, device=images.tensor.device)
+            
 
             row_ind, col_ind = MatchDice(score_inst_sig_thing[i:i+1], torch.unsqueeze(masks_pad,0), score_conf_softmax[i:i+1], gt_classes)
             col_ind_empty = np.setdiff1d(np.arange(score_inst_sig_thing[i:i+1].shape[1]), col_ind)
