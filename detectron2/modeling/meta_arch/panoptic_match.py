@@ -96,6 +96,7 @@ class PanopticMatch(nn.Module):
                   See the return value of
                   :func:`combine_semantic_and_instance_outputs` for its format.
         """
+        pdb.set_trace()
         images = [x["image"].to(self.device) for x in batched_inputs]
         images = [(x - self.pixel_mean) / self.pixel_std for x in images]
         images = ImageList.from_tensors(images, SIZE_DIVISIBILITY)
@@ -134,7 +135,7 @@ class PanopticMatch(nn.Module):
         gt_stuff = gt_stuff[:,1:]
 
         num_inst = sum([len(gt_instances[i]) for i in range(len(gt_instances))])
-        num_inst = torch.as_tensor([num_inst], dtype=torch.float, device=score_inst.device)
+        num_inst = torch.as_tensor([num_inst], dtype=torch.float, device=self.device)
         if is_dist_avail_and_initialized():
             torch.distributed.all_reduce(num_inst)
         num_inst = torch.clamp(num_inst / get_world_size(), min=1).item()  
@@ -154,7 +155,7 @@ class PanopticMatch(nn.Module):
                 masks_pad = masks.new_full((masks.shape[0], images.tensor.shape[-2], images.tensor.shape[-1]), False)
                 masks_pad[:,:masks.shape[-2], :masks.shape[-1]].copy_(masks)
             else:
-                masks_pad = torch.zeros([0, images.tensor.shape[-2], images.tensor.shape[-1]], dtype=torch.bool, device=images.tensor.device)
+                masks_pad = torch.zeros([0, images.tensor.shape[-2], images.tensor.shape[-1]], dtype=torch.bool, device=self.device)
             
 
             row_ind, col_ind = MatchDice(score_inst_sig_thing[i:i+1], torch.unsqueeze(masks_pad,0), score_conf_softmax[i:i+1], gt_classes)
