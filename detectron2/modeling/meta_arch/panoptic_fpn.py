@@ -121,8 +121,6 @@ class PanopticFPN(nn.Module):
             sem_seg_r = sem_seg_postprocess(sem_seg_result, image_size, height, width)
             detector_r = detector_postprocess(detector_result, height, width)
 
-            pdb.set_trace()
-
             processed_results.append({"sem_seg": sem_seg_r, "instances": detector_r})
 
             if self.combine_on:

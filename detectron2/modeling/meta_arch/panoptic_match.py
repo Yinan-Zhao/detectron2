@@ -210,7 +210,6 @@ class PanopticMatch(nn.Module):
         for i in range(len(batched_inputs)):
             height = batched_inputs[i].get("height", images.image_sizes[i][0])
             width = batched_inputs[i].get("width", images.image_sizes[i][1])
-            pdb.set_trace()
 
             score_inst_sig_stuff_b = F.interpolate(
                 score_inst_sig_stuff[i:i+1,:,:images.image_sizes[i][0],:images.image_sizes[i][1]], size=(height, width), mode="bilinear", align_corners=False
@@ -232,7 +231,15 @@ class PanopticMatch(nn.Module):
             result.scores = scores[inst_sem_id!=FOREGROUND_NUM]
             result.pred_classes = inst_sem_id[inst_sem_id!=FOREGROUND_NUM]
             result.pred_masks = score_inst_sig_thing_b[0,inst_sem_id!=FOREGROUND_NUM] > 0.5
-            result.pred_boxes = Boxes(torch.zeros(result.pred_masks.shape[0],4))
+
+            box_tmp = torch.zeros(result.pred_masks.shape[0],4)
+            for j in range(result.pred_masks.shape[0]):
+                nonzero_idx = torch.nonzero(result.pred_masks[j])
+                box_tmp[j,0] = nonzero_idx[:,1].min().item()
+                box_tmp[j,2] = nonzero_idx[:,1].max().item()
+                box_tmp[j,1] = nonzero_idx[:,0].min().item()
+                box_tmp[j,3] = nonzero_idx[:,0].max().item()
+            result.pred_boxes = Boxes(box_tmp)
 
             #detector_r = detector_postprocess(result, height, width)
             detector_r = result
