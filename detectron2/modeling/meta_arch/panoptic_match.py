@@ -228,39 +228,25 @@ class PanopticMatch(nn.Module):
             #detector_r = detector_postprocess(result, height, width)
             detector_r = result
             res.update({"instances": detector_r})
-            res.update({"panoptic_seg": (None, None)})
+
+            panoptic_r = combine_semantic_and_instance_outputs(
+                    result.scores,
+                    result.pred_classes,
+                    score_inst_sig_thing[i,inst_sem_id!=FOREGROUND_NUM],
+                    score_inst_sig_stuff[i]
+                )
+            res.update({"panoptic_seg": panoptic_r})
 
             processed_results.append(res)
 
-
-        '''for sem_seg_result, detector_result, input_per_image, image_size in zip(
-            sem_seg_results, detector_results, batched_inputs, images.image_sizes
-        ):
-            height = input_per_image.get("height", image_size[0])
-            width = input_per_image.get("width", image_size[1])
-            sem_seg_r = sem_seg_postprocess(sem_seg_result, image_size, height, width)
-            detector_r = detector_postprocess(detector_result, height, width)
-
-            processed_results.append({"sem_seg": sem_seg_r, "instances": detector_r})
-
-            if self.combine_on:
-                panoptic_r = combine_semantic_and_instance_outputs(
-                    detector_r,
-                    sem_seg_r.argmax(dim=0),
-                    self.combine_overlap_threshold,
-                    self.combine_stuff_area_limit,
-                    self.combine_instances_confidence_threshold,
-                )
-                processed_results[-1]["panoptic_seg"] = panoptic_r'''
         return processed_results
 
 
 def combine_semantic_and_instance_outputs(
-    instance_results,
-    semantic_results,
-    overlap_threshold,
-    stuff_area_limit,
-    instances_confidence_threshold,
+    scores,
+    pred_classes,
+    score_inst_sig_thing,
+    score_inst_sig_stuff,
 ):
     """
     Implement a simple combining logic following
@@ -277,66 +263,35 @@ def combine_semantic_and_instance_outputs(
         segments_info (list[dict]): Describe each segment in `panoptic_seg`.
             Each dict contains keys "id", "category_id", "isthing".
     """
-    panoptic_seg = torch.zeros_like(semantic_results, dtype=torch.int32)
+    score_inst_sig_thing = score_inst_sig_thing*scores[:,None,None]
+    score_inst_sig = torch.cat((score_inst_sig_stuff, score_inst_sig_thing), 0)
 
-    # sort instance outputs by scores
-    sorted_inds = torch.argsort(-instance_results.scores)
+    score_inst_idx = torch.argmax(score_inst_sig, dim=0)
+    segmentIds = torch.unique(score_inst_idx)
 
-    current_segment_id = 0
+    panoptic_seg = torch.zeros((score_inst_sig.shape[-2], score_inst_sig.shape[-1]), dtype=torch.int32)
     segments_info = []
+    current_segment_id = 0
 
-    instance_masks = instance_results.pred_masks.to(dtype=torch.bool, device=panoptic_seg.device)
-
-    # Add instances one-by-one, check for overlaps with existing ones
-    for inst_id in sorted_inds:
-        score = instance_results.scores[inst_id].item()
-        if score < instances_confidence_threshold:
-            break
-        mask = instance_masks[inst_id]  # H,W
-        mask_area = mask.sum().item()
-
-        if mask_area == 0:
-            continue
-
-        intersect = (mask > 0) & (panoptic_seg > 0)
-        intersect_area = intersect.sum().item()
-
-        if intersect_area * 1.0 / mask_area > overlap_threshold:
-            continue
-
-        if intersect_area > 0:
-            mask = mask & (panoptic_seg == 0)
-
+    for segmentId in segmentIds:
         current_segment_id += 1
-        panoptic_seg[mask] = current_segment_id
-        segments_info.append(
+        if segmentId < BACKGROUND_NUM:
+            panoptic_seg[score_inst_idx == segmentId] = current_segment_id
+            segments_info.append(
             {
-                "id": current_segment_id,
-                "isthing": True,
-                "score": score,
-                "category_id": instance_results.pred_classes[inst_id].item(),
-                "instance_id": inst_id.item(),
+                "id": segmentId,
+                "isthing": False,
+                "category_id": segmentId+1,
             }
         )
-
-    # Add semantic results to remaining empty areas
-    semantic_labels = torch.unique(semantic_results).cpu().tolist()
-    for semantic_label in semantic_labels:
-        if semantic_label == 0:  # 0 is a special "thing" class
-            continue
-        mask = (semantic_results == semantic_label) & (panoptic_seg == 0)
-        mask_area = mask.sum().item()
-        if mask_area < stuff_area_limit:
-            continue
-
-        current_segment_id += 1
-        panoptic_seg[mask] = current_segment_id
-        segments_info.append(
+        else:
+            panoptic_seg[score_inst_idx == segmentId] = current_segment_id
+            category_id = pred_classes[segmentId-BACKGROUND_NUM]
+            segments_info.append(
             {
-                "id": current_segment_id,
-                "isthing": False,
-                "category_id": semantic_label,
-                "area": mask_area,
+                "id": segmentId,
+                "isthing": True,
+                "category_id": category_id,
             }
         )
 
