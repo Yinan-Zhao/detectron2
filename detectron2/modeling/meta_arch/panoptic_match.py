@@ -275,6 +275,7 @@ def combine_semantic_and_instance_outputs(
 
     for segmentId in segmentIds:
         current_segment_id += 1
+        pdb.set_trace()
         if segmentId < BACKGROUND_NUM:
             panoptic_seg[score_inst_idx == segmentId] = current_segment_id
             segments_info.append(
@@ -293,7 +294,6 @@ def combine_semantic_and_instance_outputs(
                 "isthing": True,
                 "category_id": category_id.item(),
             }
-            pdb.set_trace()
         )
 
     return panoptic_seg, segments_info
