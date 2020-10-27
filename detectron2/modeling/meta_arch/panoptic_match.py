@@ -215,8 +215,7 @@ class PanopticMatch(nn.Module):
 
             sem_seg_result = torch.cat((score_sem_null[i:i+1],score_sem[i:i+1]), 1)
             sem_seg_r = sem_seg_postprocess(sem_seg_result, images.image_sizes[i], height, width)
-            pdb.set_trace()
-            res.update({"sem_seg": sem_seg_r[:,:BACKGROUND_NUM]})
+            res.update({"sem_seg": sem_seg_r[:BACKGROUND_NUM]})
 
             result = Instances(images.image_sizes[i])
             inst_sem_id = torch.argmax(score_conf_softmax[i], dim=1)
