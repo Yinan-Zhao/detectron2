@@ -120,6 +120,7 @@ class PanopticFPN(nn.Module):
             height = input_per_image.get("height", image_size[0])
             width = input_per_image.get("width", image_size[1])
             sem_seg_r = sem_seg_postprocess(sem_seg_result, image_size, height, width)
+            pdb.set_trace()
             detector_r = detector_postprocess(detector_result, height, width)
 
             processed_results.append({"sem_seg": sem_seg_r, "instances": detector_r})
