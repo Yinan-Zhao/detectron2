@@ -225,7 +225,8 @@ class PanopticMatch(nn.Module):
             result.pred_classes = inst_sem_id[inst_sem_id!=FOREGROUND_NUM]
             result.pred_masks = score_inst_sig_thing[i,inst_sem_id!=FOREGROUND_NUM] > 0.5
 
-            detector_r = detector_postprocess(result, height, width)
+            #detector_r = detector_postprocess(result, height, width)
+            detector_r = result
             res.update({"instances": detector_r})
 
             processed_results.append(res)
