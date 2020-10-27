@@ -291,7 +291,7 @@ def combine_semantic_and_instance_outputs(
             {
                 "id": segmentId,
                 "isthing": True,
-                "category_id": category_id,
+                "category_id": int(category_id),
             }
         )
 
