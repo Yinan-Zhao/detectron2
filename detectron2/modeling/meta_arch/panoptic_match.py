@@ -213,19 +213,20 @@ class PanopticMatch(nn.Module):
             pdb.set_trace()
 
             score_inst_sig_stuff_b = F.interpolate(
-                score_inst_sig_stuff[i:i+1], size=(height, width), mode="bilinear", align_corners=False
+                score_inst_sig_stuff[i:i+1,:,:images.image_sizes[i][0],:images.image_sizes[i][1]], size=(height, width), mode="bilinear", align_corners=False
             )
             score_inst_sig_thing_b = F.interpolate(
-                score_inst_sig_thing[i:i+1], size=(height, width), mode="bilinear", align_corners=False
+                score_inst_sig_thing[i:i+1,:,:images.image_sizes[i][0],:images.image_sizes[i][1]], size=(height, width), mode="bilinear", align_corners=False
             )
 
             res = {}
 
-            sem_seg_result = torch.cat((score_sem_null[i:i+1],score_sem[i:i+1]), 1)
-            sem_seg_r = sem_seg_postprocess(sem_seg_result, images.image_sizes[i], height, width)
-            res.update({"sem_seg": sem_seg_r[:BACKGROUND_NUM]})
+            score_sem_foreground = torch.log(torch.exp(score_sem[i:i+1,BACKGROUND_NUM:]).sum(dim=1,keepdim=True))
+            sem_seg_result = torch.cat((score_sem_foreground,score_sem[i:i+1,:BACKGROUND_NUM]), 1)
+            sem_seg_r = sem_seg_postprocess(sem_seg_result[0], images.image_sizes[i], height, width)
+            res.update({"sem_seg": sem_seg_r})
 
-            result = Instances(images.image_sizes[i])
+            result = Instances((height, width))
             inst_sem_id = torch.argmax(score_conf_softmax[i], dim=1)
             scores = score_conf_softmax[i,range(score_conf.shape[1]),inst_sem_id]
             result.scores = scores[inst_sem_id!=FOREGROUND_NUM]
