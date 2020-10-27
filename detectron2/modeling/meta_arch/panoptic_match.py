@@ -120,82 +120,83 @@ class PanopticMatch(nn.Module):
             ).tensor
         else:
             gt_sem_seg = None
-        assert (gt_sem_seg-1<0).sum() == 0
-        sem_seg_losses = self.criterion_sem(score_sem, gt_sem_seg-1)
         
         if "instances" in batched_inputs[0]:
             gt_instances = [x["instances"].to(self.device) for x in batched_inputs]
         else:
             gt_instances = None
         #pdb.set_trace()
-
-        gt_sem_seg[gt_sem_seg>BACKGROUND_NUM] = 0
-        gt_stuff = F.one_hot(gt_sem_seg, num_classes=BACKGROUND_NUM+1).permute(0,3,1,2)
-        gt_stuff = gt_stuff[:,1:]
-
-        num_inst = sum([len(gt_instances[i]) for i in range(len(gt_instances))])
-        num_inst = torch.as_tensor([num_inst], dtype=torch.float, device=self.device)
-        if is_dist_avail_and_initialized():
-            torch.distributed.all_reduce(num_inst)
-        num_inst = torch.clamp(num_inst / get_world_size(), min=1).item()  
-
-        loss_stuff_dice = 0.
-        loss_thing_dice = 0.
-        loss_stuff_focal = 0.
-        loss_conf = 0.
-
-        for i in range(len(batched_inputs)):
-            gt_inst = gt_instances[i]
-            gt_classes = gt_inst.gt_classes
-            
-            if gt_inst.has('gt_masks'):
-                gt_masks = gt_inst.gt_masks
-                masks = torch.stack([torch.from_numpy(polygons_to_bitmask(poly, gt_inst.image_size[0], gt_inst.image_size[1])).to(self.device) for poly in gt_masks.polygons], 0)
-                masks_pad = masks.new_full((masks.shape[0], images.tensor.shape[-2], images.tensor.shape[-1]), False)
-                masks_pad[:,:masks.shape[-2], :masks.shape[-1]].copy_(masks)
-            else:
-                masks_pad = torch.zeros([0, images.tensor.shape[-2], images.tensor.shape[-1]], dtype=torch.bool, device=self.device)
-            
-            row_ind, col_ind = MatchDice(score_inst_sig_thing[i:i+1], torch.unsqueeze(masks_pad,0), score_conf_softmax[i:i+1], gt_classes)
-            col_ind_empty = np.setdiff1d(np.arange(score_inst_sig_thing[i:i+1].shape[1]), col_ind)
-
-            score_inst_sig_perm = torch.cat((score_inst_sig_stuff[i],
-                                            score_inst_sig_thing[i,col_ind,:,:]),0)
-
-            target_inst_perm = torch.cat((gt_stuff[i].float(),
-                                        masks_pad[row_ind].float()),0)
-
-            loss_stuff_dice_tmp, loss_thing_dice_tmp = dice_loss(score_inst_sig_perm,
-                                                                target_inst_perm,
-                                                                num_inst, 
-                                                                background_channels=BACKGROUND_NUM, 
-                                                                valid_mask=None, 
-                                                                sigmoid_clip=True)
-            loss_stuff_dice += loss_stuff_dice_tmp
-            loss_thing_dice += loss_thing_dice_tmp
-
-            target_conf = gt_classes.new_full((score_conf.shape[1],), FOREGROUND_NUM)
-            target_conf[:len(gt_classes[row_ind])] = gt_classes[row_ind]
-            loss_conf_tmp = conf_loss(torch.cat((score_conf[i,col_ind], score_conf[i,col_ind_empty]), 0), 
-                                        target_conf.long(), 
-                                        neg_factor=10,
-                                        neg_idx=FOREGROUND_NUM)
-            loss_conf += loss_conf_tmp
-
-            loss_stuff_focal_tmp = focal_loss(score_inst_sig_stuff[i],
-                                                gt_stuff[i].float(),
-                                                valid_mask=None, 
-                                                sigmoid_clip=True)
-            loss_stuff_focal += loss_stuff_focal_tmp
-
-        loss_stuff_focal = loss_stuff_focal / len(batched_inputs)
-        loss_stuff_dice = loss_stuff_dice / len(batched_inputs)
-        loss_conf = loss_conf / len(batched_inputs)
-
-        loss_stuff_focal = loss_stuff_focal*100.
-        loss_conf = loss_conf*5
-
         if self.training:
+            assert (gt_sem_seg-1<0).sum() == 0
+            sem_seg_losses = self.criterion_sem(score_sem, gt_sem_seg-1)
+
+            gt_sem_seg[gt_sem_seg>BACKGROUND_NUM] = 0
+            gt_stuff = F.one_hot(gt_sem_seg, num_classes=BACKGROUND_NUM+1).permute(0,3,1,2)
+            gt_stuff = gt_stuff[:,1:]
+
+            num_inst = sum([len(gt_instances[i]) for i in range(len(gt_instances))])
+            num_inst = torch.as_tensor([num_inst], dtype=torch.float, device=self.device)
+            if is_dist_avail_and_initialized():
+                torch.distributed.all_reduce(num_inst)
+            num_inst = torch.clamp(num_inst / get_world_size(), min=1).item()  
+
+            loss_stuff_dice = 0.
+            loss_thing_dice = 0.
+            loss_stuff_focal = 0.
+            loss_conf = 0.
+
+            for i in range(len(batched_inputs)):
+                gt_inst = gt_instances[i]
+                gt_classes = gt_inst.gt_classes
+                
+                if gt_inst.has('gt_masks'):
+                    gt_masks = gt_inst.gt_masks
+                    masks = torch.stack([torch.from_numpy(polygons_to_bitmask(poly, gt_inst.image_size[0], gt_inst.image_size[1])).to(self.device) for poly in gt_masks.polygons], 0)
+                    masks_pad = masks.new_full((masks.shape[0], images.tensor.shape[-2], images.tensor.shape[-1]), False)
+                    masks_pad[:,:masks.shape[-2], :masks.shape[-1]].copy_(masks)
+                else:
+                    masks_pad = torch.zeros([0, images.tensor.shape[-2], images.tensor.shape[-1]], dtype=torch.bool, device=self.device)
+                
+                row_ind, col_ind = MatchDice(score_inst_sig_thing[i:i+1], torch.unsqueeze(masks_pad,0), score_conf_softmax[i:i+1], gt_classes)
+                col_ind_empty = np.setdiff1d(np.arange(score_inst_sig_thing[i:i+1].shape[1]), col_ind)
+
+                score_inst_sig_perm = torch.cat((score_inst_sig_stuff[i],
+                                                score_inst_sig_thing[i,col_ind,:,:]),0)
+
+                target_inst_perm = torch.cat((gt_stuff[i].float(),
+                                            masks_pad[row_ind].float()),0)
+
+                loss_stuff_dice_tmp, loss_thing_dice_tmp = dice_loss(score_inst_sig_perm,
+                                                                    target_inst_perm,
+                                                                    num_inst, 
+                                                                    background_channels=BACKGROUND_NUM, 
+                                                                    valid_mask=None, 
+                                                                    sigmoid_clip=True)
+                loss_stuff_dice += loss_stuff_dice_tmp
+                loss_thing_dice += loss_thing_dice_tmp
+
+                target_conf = gt_classes.new_full((score_conf.shape[1],), FOREGROUND_NUM)
+                target_conf[:len(gt_classes[row_ind])] = gt_classes[row_ind]
+                loss_conf_tmp = conf_loss(torch.cat((score_conf[i,col_ind], score_conf[i,col_ind_empty]), 0), 
+                                            target_conf.long(), 
+                                            neg_factor=10,
+                                            neg_idx=FOREGROUND_NUM)
+                loss_conf += loss_conf_tmp
+
+                loss_stuff_focal_tmp = focal_loss(score_inst_sig_stuff[i],
+                                                    gt_stuff[i].float(),
+                                                    valid_mask=None, 
+                                                    sigmoid_clip=True)
+                loss_stuff_focal += loss_stuff_focal_tmp
+
+            loss_stuff_focal = loss_stuff_focal / len(batched_inputs)
+            loss_stuff_dice = loss_stuff_dice / len(batched_inputs)
+            loss_conf = loss_conf / len(batched_inputs)
+
+            loss_stuff_focal = loss_stuff_focal*100.
+            loss_conf = loss_conf*5
+
+        
             losses = {}
             losses.update({"loss_sem_seg": sem_seg_losses})
             losses.update({"loss_stuff_focal": loss_stuff_focal})
