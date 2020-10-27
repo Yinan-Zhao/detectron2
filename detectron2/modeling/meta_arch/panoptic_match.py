@@ -228,6 +228,7 @@ class PanopticMatch(nn.Module):
             #detector_r = detector_postprocess(result, height, width)
             detector_r = result
             res.update({"instances": detector_r})
+            res.update({"panoptic_seg": (None, None)})
 
             processed_results.append(res)
 
