@@ -94,6 +94,7 @@ class PanopticFPN(nn.Module):
         else:
             gt_sem_seg = None
         sem_seg_results, sem_seg_losses = self.sem_seg_head(features, gt_sem_seg)
+        pdb.set_trace()
 
         if "instances" in batched_inputs[0]:
             gt_instances = [x["instances"].to(self.device) for x in batched_inputs]
