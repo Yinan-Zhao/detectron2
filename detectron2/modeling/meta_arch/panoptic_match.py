@@ -225,6 +225,8 @@ class PanopticMatch(nn.Module):
             result.pred_masks = score_inst_sig_thing[i,inst_sem_id!=FOREGROUND_NUM] > 0.5
             result.pred_boxes = Boxes(torch.zeros(result.pred_masks.shape[0],4))
 
+            pdb.set_trace()
+
             #detector_r = detector_postprocess(result, height, width)
             detector_r = result
             res.update({"instances": detector_r})
