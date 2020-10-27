@@ -233,6 +233,7 @@ class PanopticMatch(nn.Module):
             result.pred_masks = score_inst_sig_thing_b[0,inst_sem_id!=FOREGROUND_NUM] > 0.5
 
             pred_mask_sum = torch.sum(result.pred_masks, (1,2))
+            pdb.set_trace()
             result.pred_masks = result.pred_masks[pred_mask_sum>0]
             result.pred_classes = result.pred_classes[pred_mask_sum>0]
             result.scores = result.scores[pred_mask_sum>0]
