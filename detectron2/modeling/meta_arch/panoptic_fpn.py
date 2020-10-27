@@ -94,7 +94,6 @@ class PanopticFPN(nn.Module):
         else:
             gt_sem_seg = None
         sem_seg_results, sem_seg_losses = self.sem_seg_head(features, gt_sem_seg)
-        pdb.set_trace()
 
         if "instances" in batched_inputs[0]:
             gt_instances = [x["instances"].to(self.device) for x in batched_inputs]
@@ -120,7 +119,6 @@ class PanopticFPN(nn.Module):
             height = input_per_image.get("height", image_size[0])
             width = input_per_image.get("width", image_size[1])
             sem_seg_r = sem_seg_postprocess(sem_seg_result, image_size, height, width)
-            pdb.set_trace()
             detector_r = detector_postprocess(detector_result, height, width)
 
             processed_results.append({"sem_seg": sem_seg_r, "instances": detector_r})
