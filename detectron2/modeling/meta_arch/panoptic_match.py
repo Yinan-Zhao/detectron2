@@ -211,6 +211,13 @@ class PanopticMatch(nn.Module):
             height = batched_inputs[i].get("height", images.image_sizes[i][0])
             width = batched_inputs[i].get("width", images.image_sizes[i][1])
 
+            score_inst_sig_stuff_b = F.interpolate(
+                score_inst_sig_stuff[i:i+1], size=(height, width), mode="bilinear", align_corners=False
+            )
+            score_inst_sig_thing_b = F.interpolate(
+                score_inst_sig_thing[i:i+1], size=(height, width), mode="bilinear", align_corners=False
+            )
+
             res = {}
 
             sem_seg_result = torch.cat((score_sem_null[i:i+1],score_sem[i:i+1]), 1)
@@ -222,10 +229,8 @@ class PanopticMatch(nn.Module):
             scores = score_conf_softmax[i,range(score_conf.shape[1]),inst_sem_id]
             result.scores = scores[inst_sem_id!=FOREGROUND_NUM]
             result.pred_classes = inst_sem_id[inst_sem_id!=FOREGROUND_NUM]
-            result.pred_masks = score_inst_sig_thing[i,inst_sem_id!=FOREGROUND_NUM] > 0.5
+            result.pred_masks = score_inst_sig_thing_b[0,inst_sem_id!=FOREGROUND_NUM] > 0.5
             result.pred_boxes = Boxes(torch.zeros(result.pred_masks.shape[0],4))
-
-            pdb.set_trace()
 
             #detector_r = detector_postprocess(result, height, width)
             detector_r = result
@@ -234,8 +239,8 @@ class PanopticMatch(nn.Module):
             panoptic_r = combine_semantic_and_instance_outputs(
                     result.scores,
                     result.pred_classes,
-                    score_inst_sig_thing[i,inst_sem_id!=FOREGROUND_NUM],
-                    score_inst_sig_stuff[i]
+                    score_inst_sig_thing_b[0,inst_sem_id!=FOREGROUND_NUM],
+                    score_inst_sig_stuff_b[0]
                 )
             res.update({"panoptic_seg": panoptic_r})
 
