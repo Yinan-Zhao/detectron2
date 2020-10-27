@@ -228,15 +228,14 @@ class PanopticMatch(nn.Module):
             result = Instances((height, width))
             inst_sem_id = torch.argmax(score_conf_softmax[i], dim=1)
             scores = score_conf_softmax[i,range(score_conf.shape[1]),inst_sem_id]
-            result.scores = scores[inst_sem_id!=FOREGROUND_NUM]
-            result.pred_classes = inst_sem_id[inst_sem_id!=FOREGROUND_NUM]
-            result.pred_masks = score_inst_sig_thing_b[0,inst_sem_id!=FOREGROUND_NUM] > 0.5
+            scores = scores[inst_sem_id!=FOREGROUND_NUM]
+            pred_classes = inst_sem_id[inst_sem_id!=FOREGROUND_NUM]
+            pred_masks = score_inst_sig_thing_b[0,inst_sem_id!=FOREGROUND_NUM]
 
-            pred_mask_sum = torch.sum(result.pred_masks, (1,2))
-            pdb.set_trace()
-            result.pred_masks = result.pred_masks[pred_mask_sum>0]
-            result.pred_classes = result.pred_classes[pred_mask_sum>0]
-            result.scores = result.scores[pred_mask_sum>0]
+            pred_mask_sum = torch.sum(pred_masks>0.5, (1,2))
+            result.pred_masks = pred_masks[pred_mask_sum>0] > 0.5
+            result.pred_classes = pred_classes[pred_mask_sum>0]
+            result.scores = scores[pred_mask_sum>0]
 
             box_tmp = torch.zeros(result.pred_masks.shape[0],4)
             for j in range(result.pred_masks.shape[0]):
@@ -254,7 +253,7 @@ class PanopticMatch(nn.Module):
             panoptic_r = combine_semantic_and_instance_outputs(
                     result.scores,
                     result.pred_classes,
-                    score_inst_sig_thing_b[0,inst_sem_id!=FOREGROUND_NUM],
+                    pred_masks[pred_mask_sum>0],
                     score_inst_sig_stuff_b[0]
                 )
             res.update({"panoptic_seg": panoptic_r})
