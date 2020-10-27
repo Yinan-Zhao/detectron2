@@ -232,6 +232,11 @@ class PanopticMatch(nn.Module):
             result.pred_classes = inst_sem_id[inst_sem_id!=FOREGROUND_NUM]
             result.pred_masks = score_inst_sig_thing_b[0,inst_sem_id!=FOREGROUND_NUM] > 0.5
 
+            pred_mask_sum = torch.sum(result.pred_masks, (1,2))
+            result.pred_masks = result.pred_masks[pred_mask_sum>0]
+            result.pred_classes = result.pred_classes[pred_mask_sum>0]
+            result.scores = result.scores[pred_mask_sum>0]
+
             box_tmp = torch.zeros(result.pred_masks.shape[0],4)
             for j in range(result.pred_masks.shape[0]):
                 nonzero_idx = torch.nonzero(result.pred_masks[j])
