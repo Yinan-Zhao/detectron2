@@ -223,7 +223,7 @@ class PanopticMatch(nn.Module):
             score_sem_foreground = torch.log(torch.exp(score_sem[i:i+1,BACKGROUND_NUM:]).sum(dim=1,keepdim=True))
             sem_seg_result = torch.cat((score_sem_foreground,score_sem[i:i+1,:BACKGROUND_NUM]), 1)
             sem_seg_r = sem_seg_postprocess(sem_seg_result[0], images.image_sizes[i], height, width)
-            pdb.set_trace()
+
             res.update({"sem_seg": sem_seg_r})
 
             result = Instances((height, width))
