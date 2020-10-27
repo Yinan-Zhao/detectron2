@@ -78,6 +78,7 @@ class SemSegEvaluator(DatasetEvaluator):
 
             gt[gt == self._ignore_label] = self._num_classes
 
+            pdb.set_trace()
             self._conf_matrix += np.bincount(
                 self._N * pred.reshape(-1) + gt.reshape(-1), minlength=self._N ** 2
             ).reshape(self._N, self._N)
