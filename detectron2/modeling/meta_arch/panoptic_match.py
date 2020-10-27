@@ -223,6 +223,7 @@ class PanopticMatch(nn.Module):
             result.scores = scores[inst_sem_id!=FOREGROUND_NUM]
             result.pred_classes = inst_sem_id[inst_sem_id!=FOREGROUND_NUM]
             result.pred_masks = score_inst_sig_thing[i,inst_sem_id!=FOREGROUND_NUM] > 0.5
+            result.pred_boxes = Boxes(torch.zeros(result.pred_masks.shape[0],4))
 
             #detector_r = detector_postprocess(result, height, width)
             detector_r = result
