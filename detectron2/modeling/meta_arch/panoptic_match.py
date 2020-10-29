@@ -210,6 +210,7 @@ class PanopticMatch(nn.Module):
         for i in range(len(batched_inputs)):
             height = batched_inputs[i].get("height", images.image_sizes[i][0])
             width = batched_inputs[i].get("width", images.image_sizes[i][1])
+            pdb.set_trace()
 
             score_inst_sig_stuff_b = F.interpolate(
                 score_inst_sig_stuff[i:i+1,:,:images.image_sizes[i][0],:images.image_sizes[i][1]], size=(height, width), mode="bilinear", align_corners=False
