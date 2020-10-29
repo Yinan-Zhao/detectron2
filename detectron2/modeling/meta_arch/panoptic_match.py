@@ -23,6 +23,8 @@ from ..postprocessing import detector_postprocess, sem_seg_postprocess
 from .build import META_ARCH_REGISTRY
 from .criterion_confCate import CrossEntropy, MatchDice, dice_loss, conf_loss, focal_loss
 
+from PIL import Image
+
 import pdb
 
 BatchNorm2d = nn.BatchNorm2d
@@ -210,7 +212,6 @@ class PanopticMatch(nn.Module):
         for i in range(len(batched_inputs)):
             height = batched_inputs[i].get("height", images.image_sizes[i][0])
             width = batched_inputs[i].get("width", images.image_sizes[i][1])
-            pdb.set_trace()
 
             score_inst_sig_stuff_b = F.interpolate(
                 score_inst_sig_stuff[i:i+1,:,:images.image_sizes[i][0],:images.image_sizes[i][1]], size=(height, width), mode="bilinear", align_corners=False
@@ -218,6 +219,20 @@ class PanopticMatch(nn.Module):
             score_inst_sig_thing_b = F.interpolate(
                 score_inst_sig_thing[i:i+1,:,:images.image_sizes[i][0],:images.image_sizes[i][1]], size=(height, width), mode="bilinear", align_corners=False
             )
+
+            img_name = os.path.basename(batched_inputs[i]['file_name'])
+            img_name_split = img_name.split('.')
+            save_dir = '/home/yz9244/detectron2/output/vis_inst_sig'
+            for j in range(80):
+                pred_inst_tmp = np.asarray(255*(score_inst_sig_thing_b), dtype=np.uint8)
+                
+                img = Image.fromarray(pred_inst_tmp)
+                save_img.paste(img, (0, 0))
+
+                pred_inst_tmp = np.asarray(255*(pred_inst_tmp>127), dtype=np.uint8)
+                img = Image.fromarray(pred_inst_tmp)
+                save_img.paste(img, (0, img.height))
+                save_img.save(os.path.join(save_dir, img_name_split[0]+'_%02d.png'%(j)))
 
             res = {}
 
