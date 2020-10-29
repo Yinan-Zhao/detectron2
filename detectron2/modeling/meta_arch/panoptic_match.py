@@ -224,7 +224,7 @@ class PanopticMatch(nn.Module):
             img_name_split = img_name.split('.')
             save_dir = '/home/yz9244/detectron2/output/vis_inst_sig'
             for j in range(80):
-                pred_inst_tmp = np.asarray(255*(score_inst_sig_thing_b), dtype=np.uint8)
+                pred_inst_tmp = np.asarray(255*(score_inst_sig_thing_b[0,j].cpu().numpy()), dtype=np.uint8)
                 
                 img = Image.fromarray(pred_inst_tmp)
                 save_img.paste(img, (0, 0))
